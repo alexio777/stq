@@ -1,6 +1,14 @@
 # stq
 Simple Tasks Queue with HTTP API
 
+Environments list:
+
+|Variable|Value|
+|---|---|
+|BACKEND|memory|
+|LISTEN|listen address, example: localhost:11111|
+|APIKEY|apikey to protect|
+
 API:
 
 - POST /task?queue=queuename&timeout=seconds and payload in body
