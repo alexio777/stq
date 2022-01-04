@@ -52,7 +52,7 @@ func createAPI(apiKey string, backend backends.Backend) *http.Server {
 		rw.Write([]byte(taskID))
 	})
 	// GET /task/worker?queue=queuename
-	// return X-TASK-ID header and payload in body
+	// return X-TASK-ID in header and payload in body
 	mux.HandleFunc("/task/worker", func(rw http.ResponseWriter, r *http.Request) {
 		if !checkAPIKey(r, apiKey) {
 			http.Error(rw, "invalid API key", http.StatusUnauthorized)
@@ -126,11 +126,17 @@ func createAPI(apiKey string, backend backends.Backend) *http.Server {
 				http.Error(rw, "", http.StatusNotFound)
 				return
 			}
+			if err == backends.ErrTaskExecutionTimeout {
+				http.Error(rw, "", http.StatusRequestTimeout)
+				return
+			}
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		rw.Write(result)
 	})
+	// GET /stats
+	// return stats json object
 	mux.HandleFunc("/stats", func(rw http.ResponseWriter, r *http.Request) {
 		if !checkAPIKey(r, apiKey) {
 			http.Error(rw, "invalid API key", http.StatusUnauthorized)
