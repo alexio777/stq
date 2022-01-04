@@ -32,4 +32,4 @@ https://hub.docker.com/r/alexstup/stq/tags
 
 Go client:
 
-`go get -u github.com/alexio777/stq`
+`go get -u github.com/alexio777/stq/client`
