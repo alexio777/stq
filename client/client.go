@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+var (
+	ErrTaskNotReady = errors.New("task not ready")
+)
+
 type Client struct {
 	apiKey string
 	apiURL string
@@ -39,30 +43,37 @@ func (c *Client) AddTask(queue string, timeoutSeconds int, payload []byte) error
 	return nil
 }
 
-func (c *Client) GetWorkerTask(queue string) (taskID string, payload []byte, err error) {
+func (c *Client) WaitWorkerTask(queue string, retries int, interval time.Duration) (taskID string, payload []byte, err error) {
 	req, err := http.NewRequest("GET",
-		c.apiURL+"/task?queue="+queue,
+		c.apiURL+"/task/worker?queue="+queue,
 		nil)
 	if err != nil {
 		return "", nil, err
 	}
 	req.Header.Set("X-API-KEY", c.apiKey)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", nil, err
+	for retry := 0; retry < retries; retry++ {
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return "", nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			if resp.StatusCode == http.StatusNotFound {
+				time.Sleep(interval)
+				continue
+			}
+			return "", nil, errors.New(resp.Status)
+		}
+		taskIDRaw := resp.Header.Get("X-TASK-ID")
+		if taskIDRaw == "" {
+			return "", nil, errors.New("task id is empty")
+		}
+		payload, err = ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", nil, err
+		}
+		return string(taskIDRaw), payload, nil
 	}
-	if resp.StatusCode != http.StatusOK {
-		return "", nil, errors.New(resp.Status)
-	}
-	taskIDRaw := resp.Header.Get("X-TASK-ID")
-	if taskIDRaw == "" {
-		return "", nil, errors.New("task id is empty")
-	}
-	payload, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil, err
-	}
-	return string(taskIDRaw), payload, nil
+	return "", nil, ErrTaskNotReady
 }
 
 func (c *Client) SetTaskReady(taskID string, result []byte) error {
@@ -85,7 +96,7 @@ func (c *Client) SetTaskReady(taskID string, result []byte) error {
 
 func (c *Client) WaitTaskReady(taskID string, retries int, interval time.Duration) ([]byte, error) {
 	req, err := http.NewRequest("GET",
-		c.apiURL+"/task/ready?taskid="+taskID,
+		c.apiURL+"/task/result?taskid="+taskID,
 		nil)
 	if err != nil {
 		return nil, err
@@ -109,5 +120,5 @@ func (c *Client) WaitTaskReady(taskID string, retries int, interval time.Duratio
 		}
 		return result, nil
 	}
-	return nil, errors.New("task not ready")
+	return nil, ErrTaskNotReady
 }
