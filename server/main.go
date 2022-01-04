@@ -26,7 +26,7 @@ func NewBackend(name string) (backends.Backend, error) {
 }
 
 func main() {
-	log.Println("STQ v1.1")
+	log.Println("STQ v1.0.1")
 
 	backendName := os.Getenv("BACKEND")
 	if backendName == "" {
