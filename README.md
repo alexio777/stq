@@ -11,11 +11,11 @@ Environments list:
 
 API:
 
-- POST /task?queue=queuename&timeout=seconds and payload in body
+- POST /task?queue=QUEUENAME&timeout=SECONDS and payload in body
 
     return task id
 
-- GET /task/worker?queue=queuename
+- GET /task/worker?queue=QUEUENAME
 
     return X-TASK-ID in header and payload in body
 
@@ -23,7 +23,7 @@ API:
 
     set task result and return 200
 
-- GET /task/result?taskid=taskid
+- GET /task/result?taskid=TASKID
 
     return task result or 408 HTTP StatusRequestTimeout
 
