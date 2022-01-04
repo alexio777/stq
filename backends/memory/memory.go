@@ -2,6 +2,7 @@ package memory
 
 import (
 	"cyberflat/stq/backends"
+	"encoding/json"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -9,15 +10,20 @@ import (
 )
 
 type Memory struct {
-	queues     sync.Map
-	inProcess  sync.Map
-	readyTasks sync.Map
+	queues sync.Map
+	work   sync.Map
+	ready  sync.Map
+
+	stats      map[string]backends.Stats
+	statsMutex sync.Mutex
 
 	taskIDCounter uint64
 }
 
 func New() (*Memory, error) {
-	return &Memory{}, nil
+	return &Memory{
+		stats: make(map[string]backends.Stats),
+	}, nil
 }
 
 func (m *Memory) Close() error {
@@ -40,17 +46,21 @@ func (m *Memory) Put(queue string, payload []byte, executionTimeout time.Duratio
 		m.queues.Store(queue, q)
 	}
 	q.(*sync.Pool).Put(&backends.Task{
+		Queue:   queue,
 		ID:      taskID,
 		Payload: payload,
 		Timeout: executionTimeout,
+	})
+	m.updateStats(queue, func(stats *backends.Stats) {
+		stats.WaitLength++
 	})
 	return taskID, nil
 }
 
 /*
 	queue pool => task
-	task => inprocess map
-	timeout: delete(inprocess, task); task+error => ready map
+	task => executed map
+	timeout: delete(executed, task); task+error => ready map
 */
 func (m *Memory) GetNotReady(queue string) (taskID string, payload []byte, err error) {
 	q, ok := m.queues.Load(queue)
@@ -62,12 +72,16 @@ func (m *Memory) GetNotReady(queue string) (taskID string, payload []byte, err e
 		return "", nil, backends.ErrQueueNotFound
 	}
 	task := taskObject.(*backends.Task)
-	m.inProcess.Store(task.ID, task)
+	m.work.Store(task.ID, task)
+	m.updateStats(queue, func(stats *backends.Stats) {
+		stats.WaitLength--
+		stats.WorkLength++
+	})
 	go func() {
 		time.Sleep(task.Timeout)
-		m.inProcess.Delete(task.ID)
+		m.work.Delete(task.ID)
 		task.Error = backends.ErrTaskExecutionTimeout
-		m.readyTasks.Store(task.ID, task)
+		m.ready.Store(task.ID, task)
 	}()
 	return task.ID, task.Payload, nil
 }
@@ -78,7 +92,7 @@ func (m *Memory) GetNotReady(queue string) (taskID string, payload []byte, err e
 	return result
 */
 func (m *Memory) GetReady(taskID string) (result []byte, err error) {
-	taskObject, ok := m.readyTasks.Load(taskID)
+	taskObject, ok := m.ready.Load(taskID)
 	if !ok {
 		return nil, backends.ErrTaskNotFoundOrNotReady
 	}
@@ -87,23 +101,48 @@ func (m *Memory) GetReady(taskID string) (result []byte, err error) {
 		return nil, task.Error
 	}
 	result = task.Result
-	m.readyTasks.Delete(taskID)
+	m.ready.Delete(taskID)
+	m.updateStats(task.Queue, func(stats *backends.Stats) {
+		stats.ReadyLength--
+	})
 	return result, nil
 }
 
 /*
-	inprocess map => task
-	delete(inprocess, task)
+	executed map => task
+	delete(executed, task)
 	task => ready map
 */
 func (m *Memory) TaskReady(taskID string, result []byte) error {
-	taskObject, ok := m.inProcess.Load(taskID)
+	taskObject, ok := m.work.Load(taskID)
 	if !ok {
 		return backends.ErrTaskNotFoundOrNotReady
 	}
 	task := taskObject.(*backends.Task)
 	task.Result = result
-	m.inProcess.Delete(taskID)
-	m.readyTasks.Store(taskID, task)
+	m.work.Delete(taskID)
+	m.ready.Store(taskID, task)
+	m.updateStats(task.Queue, func(stats *backends.Stats) {
+		stats.WorkLength--
+		stats.ReadyLength++
+	})
 	return nil
+}
+
+func (m *Memory) Stats() ([]byte, error) {
+	m.statsMutex.Lock()
+	data, err := json.MarshalIndent(m.stats, "", "  ")
+	m.statsMutex.Unlock()
+	return data, err
+}
+
+func (m *Memory) updateStats(queue string, cb func(stats *backends.Stats)) {
+	m.statsMutex.Lock()
+	stats, ok := m.stats[queue]
+	if !ok {
+		stats = backends.Stats{}
+	}
+	cb(&stats)
+	m.stats[queue] = stats
+	m.statsMutex.Unlock()
 }

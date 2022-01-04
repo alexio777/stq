@@ -3,7 +3,9 @@ package main
 import (
 	"bytes"
 	"context"
+	"cyberflat/stq/backends"
 	"cyberflat/stq/backends/memory"
+	"encoding/json"
 	"io/ioutil"
 	"log"
 	"net"
@@ -125,6 +127,32 @@ func Test_API(t *testing.T) {
 		}
 		if string(result) != "result_123" {
 			t.Fatalf("result is not equal: %s != %s", string(result), "result")
+		}
+		// check stats
+		req, err = http.NewRequest("GET", "http://localhost:11111/stats", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-API-KEY", "d6MrLT7MwlhtaoQu2b5lWFr")
+		resp, err = http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			body, _ := ioutil.ReadAll(resp.Body)
+			t.Fatalf("unexpected status code: %d, body: %s", resp.StatusCode, body)
+		}
+		data, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var stats map[string]backends.Stats
+		err = json.Unmarshal(data, &stats)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if stats["queue"].WaitLength != 0 && stats["queue"].WorkLength != 0 && stats["queue"].ReadyLength != 1 {
+			t.Fatalf("stats is not equal: %v", stats)
 		}
 	})
 }

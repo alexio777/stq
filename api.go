@@ -130,6 +130,22 @@ func createAPI(apiKey string, backend backends.Backend) *http.Server {
 		}
 		rw.Write(result)
 	})
+	mux.HandleFunc("/stats", func(rw http.ResponseWriter, r *http.Request) {
+		if !checkAPIKey(r, apiKey) {
+			http.Error(rw, "invalid API key", http.StatusUnauthorized)
+			return
+		}
+		if r.Method != "GET" {
+			rw.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		stats, err := backend.Stats()
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		rw.Write(stats)
+	})
 	server := &http.Server{Handler: mux}
 	return server
 }

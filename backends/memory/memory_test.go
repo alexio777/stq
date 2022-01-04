@@ -69,7 +69,7 @@ func Test_MemoryBackend(t *testing.T) {
 					t.Fatal("task is not nil")
 				}
 			}
-			_, ok = backend.inProcess.Load(taskID)
+			_, ok = backend.work.Load(taskID)
 			if ok {
 				t.Fatal("task is not deleted from inprocess")
 			}
@@ -113,11 +113,11 @@ func Test_MemoryBackend(t *testing.T) {
 				t.Fatal("task is not nil")
 			}
 		}
-		_, ok = backend.inProcess.Load(taskID)
+		_, ok = backend.work.Load(taskID)
 		if ok {
 			t.Fatal("task exist in in process queue")
 		}
-		task, ok := backend.readyTasks.Load(taskID)
+		task, ok := backend.ready.Load(taskID)
 		if !ok {
 			t.Fatal("ready tasks is empty")
 		}
@@ -137,7 +137,7 @@ func Test_MemoryBackend(t *testing.T) {
 		if !bytes.Equal(result, []byte("done")) {
 			t.Fatalf("result is not equal: %s != %s", string(result), "done")
 		}
-		task, ok = backend.readyTasks.Load(taskID)
+		task, ok = backend.ready.Load(taskID)
 		if ok {
 			t.Fatalf("task is not empty: %s", task.(*backends.Task).ID)
 		}

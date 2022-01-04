@@ -11,7 +11,14 @@ var (
 	ErrTaskExecutionTimeout   = errors.New("task execution timeout")
 )
 
+type Stats struct {
+	WaitLength  uint64
+	WorkLength  uint64
+	ReadyLength uint64
+}
+
 type Task struct {
+	Queue   string
 	ID      string
 	Payload []byte
 	Error   error
@@ -32,4 +39,6 @@ type Backend interface {
 	GetReady(taskid string) (result []byte, err error)
 	// Task is ready.
 	TaskReady(taskid string, result []byte) error
+	// Queues stats
+	Stats() ([]byte, error)
 }
