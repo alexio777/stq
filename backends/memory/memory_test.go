@@ -15,7 +15,7 @@ func Test_MemoryBackend(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			taskID, err := backend.Put("queue", []byte("payload"))
+			taskID, err := backend.Put("queue", []byte("payload"), time.Minute)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -41,12 +41,45 @@ func Test_MemoryBackend(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		taskID, err := backend.Put("queue", []byte("payload"))
+		t.Run("Check execution timeout", func(t *testing.T) {
+			taskID, err := backend.Put("queue", []byte("timeout"), time.Nanosecond)
+			if err != nil {
+				t.Fatal(err)
+			}
+			_, _, err = backend.GetNotReady("queue")
+			if err != nil {
+				t.Fatal(err)
+			}
+			time.Sleep(time.Millisecond)
+			task, err := backend.GetReady(taskID)
+			if task != nil {
+				t.Fatal("task is not nil")
+			}
+			if err != backends.ErrTaskExecutionTimeout {
+				t.Fatalf("task execution timeout is not detected: %s", err)
+			}
+			q, ok := backend.queues.Load("queue")
+			if !ok {
+				t.Fatal("queue not found")
+			}
+			taskObject := q.(*sync.Pool).Get()
+			if taskObject != nil {
+				task := taskObject.(*backends.Task)
+				if task != nil {
+					t.Fatal("task is not nil")
+				}
+			}
+			_, ok = backend.inProcess.Load(taskID)
+			if ok {
+				t.Fatal("task is not deleted from inprocess")
+			}
+		})
+		taskID, err := backend.Put("queue", []byte("payload"), time.Minute)
 		if err != nil {
 			t.Fatal(err)
 		}
 		t.Run("Get not ready task", func(t *testing.T) {
-			notready_taskID, payload, err := backend.GetNotReady("queue", time.Second)
+			notready_taskID, payload, err := backend.GetNotReady("queue")
 			if err != nil {
 				t.Fatal(err)
 			}

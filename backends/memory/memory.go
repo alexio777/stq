@@ -28,7 +28,10 @@ func (m *Memory) Name() string {
 	return "memory"
 }
 
-func (m *Memory) Put(queue string, payload []byte) (taskID string, err error) {
+/*
+	task => queue pool
+*/
+func (m *Memory) Put(queue string, payload []byte, executionTimeout time.Duration) (taskID string, err error) {
 	id := atomic.AddUint64(&m.taskIDCounter, 1)
 	taskID = strconv.FormatUint(id, 10)
 	q, ok := m.queues.Load(queue)
@@ -43,7 +46,12 @@ func (m *Memory) Put(queue string, payload []byte) (taskID string, err error) {
 	return taskID, nil
 }
 
-func (m *Memory) GetNotReady(queue string, timeoutInProcess time.Duration) (taskID string, payload []byte, err error) {
+/*
+	queue pool => task
+	task => inprocess map
+	timeout: delete(inprocess, task); task+error => ready map
+*/
+func (m *Memory) GetNotReady(queue string) (taskID string, payload []byte, err error) {
 	q, ok := m.queues.Load(queue)
 	if !ok {
 		return "", nil, backends.ErrQueueNotFound
@@ -52,7 +60,7 @@ func (m *Memory) GetNotReady(queue string, timeoutInProcess time.Duration) (task
 	task := taskObject.(*backends.Task)
 	m.inProcess.Store(task.ID, task)
 	go func() {
-		time.Sleep(timeoutInProcess)
+		time.Sleep(task.Timeout)
 		m.inProcess.Delete(task.ID)
 		task.Error = backends.ErrTaskExecutionTimeout
 		m.readyTasks.Store(task.ID, task)
@@ -60,16 +68,30 @@ func (m *Memory) GetNotReady(queue string, timeoutInProcess time.Duration) (task
 	return task.ID, task.Payload, nil
 }
 
+/*
+	ready map => task
+	delete(ready, task)
+	return result
+*/
 func (m *Memory) GetReady(taskID string) (result []byte, err error) {
-	task, ok := m.readyTasks.Load(taskID)
+	taskObject, ok := m.readyTasks.Load(taskID)
 	if !ok {
 		return nil, backends.ErrTaskNotFoundOrNotReady
 	}
-	result = task.(*backends.Task).Result
+	task := taskObject.(*backends.Task)
+	if task.Error != nil {
+		return nil, task.Error
+	}
+	result = task.Result
 	m.readyTasks.Delete(taskID)
 	return result, nil
 }
 
+/*
+	inprocess map => task
+	delete(inprocess, task)
+	task => ready map
+*/
 func (m *Memory) TaskReady(taskID string, result []byte) error {
 	taskObject, ok := m.inProcess.Load(taskID)
 	if !ok {

@@ -16,6 +16,7 @@ type Task struct {
 	Payload []byte
 	Error   error
 	Result  []byte
+	Timeout time.Duration
 }
 
 type Backend interface {
@@ -24,11 +25,11 @@ type Backend interface {
 	// Get the backend name.
 	Name() string
 	// Put task to queue and return task id.
-	Put(queue string, payload []byte) (taskID string, err error)
+	Put(queue string, payload []byte, executionTimeout time.Duration) (taskID string, err error)
 	// Get not ready task from queue and start processing timeout.
-	GetNotReady(queue string, timeoutInProcess time.Duration) (taskID string, payload []byte, err error)
+	GetNotReady(queue string) (taskID string, payload []byte, err error)
 	// Get ready task by task id or task error.
-	GetReady(taskid string) (payload []byte, err error)
+	GetReady(taskid string) (result []byte, err error)
 	// Task is ready.
 	TaskReady(taskid string, result []byte) error
 }
