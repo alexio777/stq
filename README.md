@@ -1,2 +1,5 @@
 # stq
-Simple Tasks Queue with REST API
+Simple Tasks Queue with HTTP API
+
+Backends:
+- memory
