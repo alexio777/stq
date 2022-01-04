@@ -18,6 +18,7 @@ jobs:
     - name: Test
       run: go test -v ./...
   docker:
+    needs: [ test ]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -37,4 +38,4 @@ jobs:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/stq:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/stq:1.0
