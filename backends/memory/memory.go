@@ -2,20 +2,25 @@ package memory
 
 import (
 	"cyberflat/stq/backends"
+	"strconv"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type Memory struct {
-	queuesIncomplete sync.Map
-	queuesComplete   sync.Map
+	queues     sync.Map
+	inProcess  sync.Map
+	readyTasks sync.Map
+
+	taskIDCounter uint64
 }
 
 func New() (*Memory, error) {
 	return &Memory{}, nil
 }
 
-func Close() error {
+func (m *Memory) Close() error {
 	return nil
 }
 
@@ -23,32 +28,56 @@ func (m *Memory) Name() string {
 	return "memory"
 }
 
-func (m *Memory) Put(queue string, task *backends.Task, timeout time.Duration) error {
-	q, ok := m.queuesIncomplete.Load(queue)
+func (m *Memory) Put(queue string, payload []byte) (taskID string, err error) {
+	id := atomic.AddUint64(&m.taskIDCounter, 1)
+	taskID = strconv.FormatUint(id, 10)
+	q, ok := m.queues.Load(queue)
 	if !ok {
 		q = &sync.Pool{}
-		m.queuesIncomplete.Store(queue, q)
+		m.queues.Store(queue, q)
 	}
-	q.(*sync.Pool).Put(task)
-	return nil
+	q.(*sync.Pool).Put(&backends.Task{
+		ID:      taskID,
+		Payload: payload,
+	})
+	return taskID, nil
 }
 
-func get(m *sync.Map, queue string) (*backends.Task, error) {
-	q, ok := m.Load(queue)
+func (m *Memory) GetNotReady(queue string, timeoutInProcess time.Duration) (taskID string, payload []byte, err error) {
+	q, ok := m.queues.Load(queue)
 	if !ok {
-		return nil, nil
+		return "", nil, backends.ErrQueueNotFound
 	}
-	task := q.(*sync.Pool).Get()
-	if task == nil {
-		return nil, nil
-	}
-	return task.(*backends.Task), nil
+	taskObject := q.(*sync.Pool).Get()
+	task := taskObject.(*backends.Task)
+	m.inProcess.Store(task.ID, task)
+	go func() {
+		time.Sleep(timeoutInProcess)
+		m.inProcess.Delete(task.ID)
+		task.Error = backends.ErrTaskExecutionTimeout
+		m.readyTasks.Store(task.ID, task)
+	}()
+	return task.ID, task.Payload, nil
 }
 
-func (m *Memory) Get(queue string) (*backends.Task, error) {
-	return get(&m.queuesComplete, queue)
+func (m *Memory) GetReady(taskID string) (result []byte, err error) {
+	task, ok := m.readyTasks.Load(taskID)
+	if !ok {
+		return nil, backends.ErrTaskNotFoundOrNotReady
+	}
+	result = task.(*backends.Task).Result
+	m.readyTasks.Delete(taskID)
+	return result, nil
 }
 
-func (m *Memory) GetComplete(queue string) (*backends.Task, error) {
-	return get(&m.queuesComplete, queue)
+func (m *Memory) TaskReady(taskID string, result []byte) error {
+	taskObject, ok := m.inProcess.Load(taskID)
+	if !ok {
+		return backends.ErrTaskNotFoundOrNotReady
+	}
+	task := taskObject.(*backends.Task)
+	task.Result = result
+	m.inProcess.Delete(taskID)
+	m.readyTasks.Store(taskID, task)
+	return nil
 }
