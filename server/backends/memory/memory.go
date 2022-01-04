@@ -1,12 +1,13 @@
 package memory
 
 import (
-	"cyberflat/stq/server/backends"
 	"encoding/json"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/alexio777/stq/server/backends"
 )
 
 type Memory struct {

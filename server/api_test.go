@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"cyberflat/stq/server/backends"
-	"cyberflat/stq/server/backends/memory"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -12,6 +10,9 @@ import (
 	"net/http"
 	"testing"
 	"time"
+
+	"github.com/alexio777/stq/server/backends"
+	"github.com/alexio777/stq/server/backends/memory"
 )
 
 func Test_API(t *testing.T) {

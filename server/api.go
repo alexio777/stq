@@ -1,11 +1,12 @@
 package main
 
 import (
-	"cyberflat/stq/server/backends"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/alexio777/stq/server/backends"
 )
 
 func checkAPIKey(r *http.Request, apiKey string) bool {

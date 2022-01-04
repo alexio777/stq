@@ -3,12 +3,14 @@ package main
 import (
 	"bytes"
 	"context"
-	"cyberflat/stq/client"
-	"cyberflat/stq/server/backends/memory"
 	"log"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/alexio777/stq/server/backends/memory"
+
+	"github.com/alexio777/stq/client"
 )
 
 func Test_Client(t *testing.T) {

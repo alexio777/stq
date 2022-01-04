@@ -1,2 +1,2 @@
 # stq
-Simple Task Queue with REST API
+Simple Tasks Queue with REST API

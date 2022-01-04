@@ -1,13 +1,15 @@
 package main
 
 import (
-	"cyberflat/stq/server/backends"
-	"cyberflat/stq/server/backends/memory"
 	"errors"
 	"fmt"
 	"log"
 	"net"
 	"os"
+
+	"github.com/alexio777/stq/server/backends/memory"
+
+	"github.com/alexio777/stq/server/backends"
 )
 
 var (
@@ -24,7 +26,7 @@ func NewBackend(name string) (backends.Backend, error) {
 }
 
 func main() {
-	log.Println("STQ v1.0")
+	log.Println("STQ v1.1")
 
 	backendName := os.Getenv("BACKEND")
 	if backendName == "" {

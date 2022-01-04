@@ -2,10 +2,11 @@ package memory
 
 import (
 	"bytes"
-	"cyberflat/stq/server/backends"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/alexio777/stq/server/backends"
 )
 
 func Test_MemoryBackend(t *testing.T) {
