@@ -78,74 +78,68 @@ func Test_MemoryBackend(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Run("Get not ready task", func(t *testing.T) {
-			notready_taskID, payload, err := backend.GetNotReady("queue")
-			if err != nil {
-				t.Fatal(err)
+		notready_taskID, payload, err := backend.GetNotReady("queue")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if taskID != notready_taskID {
+			t.Fatalf("taskID is not equal: %s != %s", taskID, notready_taskID)
+		}
+		if string(payload) != "payload" {
+			t.Fatalf("payload is not equal: %s != %s", string(payload), "payload")
+		}
+		q, ok := backend.queues.Load("queue")
+		if !ok {
+			t.Fatal("queue not found")
+		}
+		taskObject := q.(*sync.Pool).Get()
+		if taskObject != nil {
+			task := taskObject.(*backends.Task)
+			if task != nil {
+				t.Fatal("task is not nil")
 			}
-			if taskID != notready_taskID {
-				t.Fatalf("taskID is not equal: %s != %s", taskID, notready_taskID)
+		}
+		if err := backend.TaskReady(taskID, []byte("done")); err != nil {
+			t.Fatal(err)
+		}
+		q, ok = backend.queues.Load("queue")
+		if !ok {
+			t.Fatal("queue not found")
+		}
+		taskObject = q.(*sync.Pool).Get()
+		if taskObject != nil {
+			task := taskObject.(*backends.Task)
+			if task != nil {
+				t.Fatal("task is not nil")
 			}
-			if string(payload) != "payload" {
-				t.Fatalf("payload is not equal: %s != %s", string(payload), "payload")
-			}
-			q, ok := backend.queues.Load("queue")
-			if !ok {
-				t.Fatal("queue not found")
-			}
-			taskObject := q.(*sync.Pool).Get()
-			if taskObject != nil {
-				task := taskObject.(*backends.Task)
-				if task != nil {
-					t.Fatal("task is not nil")
-				}
-			}
-		})
-		t.Run("Finish task", func(t *testing.T) {
-			if err := backend.TaskReady(taskID, []byte("done")); err != nil {
-				t.Fatal(err)
-			}
-			q, ok := backend.queues.Load("queue")
-			if !ok {
-				t.Fatal("queue not found")
-			}
-			taskObject := q.(*sync.Pool).Get()
-			if taskObject != nil {
-				task := taskObject.(*backends.Task)
-				if task != nil {
-					t.Fatal("task is not nil")
-				}
-			}
-			_, ok = backend.inProcess.Load(taskID)
-			if ok {
-				t.Fatal("task exist in in process queue")
-			}
-			task, ok := backend.readyTasks.Load(taskID)
-			if !ok {
-				t.Fatal("ready tasks is empty")
-			}
-			if task.(*backends.Task).Result == nil {
-				t.Fatal("task result is empty")
-			}
-			if task.(*backends.Task).Error != nil {
-				t.Fatal("task error is not nil")
-			}
-			if !bytes.Equal(task.(*backends.Task).Result, []byte("done")) {
-				t.Fatalf("task result is not equal: %s != %s", string(task.(*backends.Task).Result), "done")
-			}
-		})
-		t.Run("Get ready task result", func(t *testing.T) {
-			result, err := backend.GetReady(taskID)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !bytes.Equal(result, []byte("done")) {
-				t.Fatalf("result is not equal: %s != %s", string(result), "done")
-			}
-			task, ok := backend.readyTasks.Load(taskID)
-			if ok {
-				t.Fatalf("task is not empty: %s", task.(*backends.Task).ID)
-			}
-		})
+		}
+		_, ok = backend.inProcess.Load(taskID)
+		if ok {
+			t.Fatal("task exist in in process queue")
+		}
+		task, ok := backend.readyTasks.Load(taskID)
+		if !ok {
+			t.Fatal("ready tasks is empty")
+		}
+		if task.(*backends.Task).Result == nil {
+			t.Fatal("task result is empty")
+		}
+		if task.(*backends.Task).Error != nil {
+			t.Fatal("task error is not nil")
+		}
+		if !bytes.Equal(task.(*backends.Task).Result, []byte("done")) {
+			t.Fatalf("task result is not equal: %s != %s", string(task.(*backends.Task).Result), "done")
+		}
+		result, err := backend.GetReady(taskID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(result, []byte("done")) {
+			t.Fatalf("result is not equal: %s != %s", string(result), "done")
+		}
+		task, ok = backend.readyTasks.Load(taskID)
+		if ok {
+			t.Fatalf("task is not empty: %s", task.(*backends.Task).ID)
+		}
 	})
 }

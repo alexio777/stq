@@ -42,6 +42,7 @@ func (m *Memory) Put(queue string, payload []byte, executionTimeout time.Duratio
 	q.(*sync.Pool).Put(&backends.Task{
 		ID:      taskID,
 		Payload: payload,
+		Timeout: executionTimeout,
 	})
 	return taskID, nil
 }
@@ -57,6 +58,9 @@ func (m *Memory) GetNotReady(queue string) (taskID string, payload []byte, err e
 		return "", nil, backends.ErrQueueNotFound
 	}
 	taskObject := q.(*sync.Pool).Get()
+	if taskObject == nil {
+		return "", nil, backends.ErrQueueNotFound
+	}
 	task := taskObject.(*backends.Task)
 	m.inProcess.Store(task.ID, task)
 	go func() {

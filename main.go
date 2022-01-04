@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"os"
 )
 
@@ -43,6 +44,10 @@ func main() {
 	if apiKey == "" {
 		log.Fatal("APIKEY environment variable is not set")
 	}
-	server := createAPI(listen, apiKey, backend)
-	log.Fatal(server.ListenAndServe())
+	api := createAPI(apiKey, backend)
+	apiListener, err := net.Listen("tcp", listen)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Fatal(api.Serve(apiListener))
 }
