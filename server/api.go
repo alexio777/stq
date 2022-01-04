@@ -1,7 +1,7 @@
 package main
 
 import (
-	"cyberflat/stq/backends"
+	"cyberflat/stq/server/backends"
 	"io/ioutil"
 	"net/http"
 	"strconv"

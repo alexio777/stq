@@ -2,7 +2,7 @@ package memory
 
 import (
 	"bytes"
-	"cyberflat/stq/backends"
+	"cyberflat/stq/server/backends"
 	"sync"
 	"testing"
 	"time"

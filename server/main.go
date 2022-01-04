@@ -1,8 +1,8 @@
 package main
 
 import (
-	"cyberflat/stq/backends"
-	"cyberflat/stq/backends/memory"
+	"cyberflat/stq/server/backends"
+	"cyberflat/stq/server/backends/memory"
 	"errors"
 	"fmt"
 	"log"

@@ -3,8 +3,8 @@ package main
 import (
 	"bytes"
 	"context"
-	"cyberflat/stq/backends"
-	"cyberflat/stq/backends/memory"
+	"cyberflat/stq/server/backends"
+	"cyberflat/stq/server/backends/memory"
 	"encoding/json"
 	"io/ioutil"
 	"log"
@@ -152,7 +152,7 @@ func Test_API(t *testing.T) {
 			t.Fatal(err)
 		}
 		if stats["queue"].WaitLength != 0 && stats["queue"].WorkLength != 0 && stats["queue"].ReadyLength != 1 {
-			t.Fatalf("stats is not equal: %v", stats)
+			t.Fatalf("stats is not equal zero: %v", stats)
 		}
 	})
 }

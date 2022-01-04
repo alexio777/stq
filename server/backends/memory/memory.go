@@ -1,7 +1,7 @@
 package memory
 
 import (
-	"cyberflat/stq/backends"
+	"cyberflat/stq/server/backends"
 	"encoding/json"
 	"strconv"
 	"sync"
