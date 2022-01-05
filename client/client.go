@@ -25,22 +25,29 @@ func New(apiURL string, apikey string) *Client {
 	}
 }
 
-func (c *Client) AddTask(queue string, timeoutSeconds int, payload []byte) error {
+func (c *Client) AddTask(queue string, timeoutSeconds int, payload []byte) (taskID string, err error) {
 	req, err := http.NewRequest("POST",
 		c.apiURL+"/task?queue="+queue+"&timeout="+strconv.Itoa(timeoutSeconds),
 		bytes.NewBuffer(payload))
 	if err != nil {
-		return err
+		return "", err
 	}
 	req.Header.Set("X-API-KEY", c.apiKey)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(resp.Status)
+		return "", errors.New(resp.Status)
 	}
-	return nil
+	taskIDRaw, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if taskIDRaw == nil {
+		return "", errors.New("task id is empty")
+	}
+	return string(taskIDRaw), nil
 }
 
 func (c *Client) WaitWorkerTask(queue string, retries int, interval time.Duration) (taskID string, payload []byte, err error) {
